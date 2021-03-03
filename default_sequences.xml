@@ -1,0 +1,385 @@
+<sequences>
+  <sequence name="DebugPortSetup">
+    <block>
+      __var isSWJ      = ((__protocol &amp; 0x00010000) != 0);
+      __var hasDormant = __protocol &amp; 0x00020000;
+      __var protType   = __protocol &amp; 0x0000FFFF;
+    </block>
+
+    <!-- JTAG Protocol -->
+    <control if="protType == 1">
+
+      <control if="isSWJ">
+
+        <control if="hasDormant">
+
+          <block atomic="1">
+            // Ensure current debug interface is in reset state
+            DAP_SWJ_Sequence(51, 0x0007FFFFFFFFFFFF);
+
+            // Select Dormant State (from SWD)
+            DAP_SWJ_Sequence(16, 0xE3BC);
+
+            // At least 8 cycles SWDIO/TMS HIGH
+            DAP_SWJ_Sequence(8, 0xFF);
+
+            // Alert Sequence Bits  0.. 63
+            DAP_SWJ_Sequence(64, 0x86852D956209F392);
+
+            // Alert Sequence Bits 64..127
+            DAP_SWJ_Sequence(64, 0x19BC0EA2E3DDAFE9);
+
+            // 4 cycles SWDIO/TMS LOW + 8-Bit JTAG Activation Code (0x0A)
+            DAP_SWJ_Sequence(12, 0x0A0);
+
+            // Ensure JTAG interface is reset
+            DAP_SWJ_Sequence(6, 0x3F);
+          </block>
+
+        </control>
+
+        <control if="!hasDormant">
+
+          <block atomic="1">
+            // Ensure current debug interface is in reset state
+            DAP_SWJ_Sequence(51, 0x0007FFFFFFFFFFFF);
+
+            // Execute SWJ-DP Switch Sequence SWD to JTAG (0xE73C)
+            // Change if SWJ-DP uses deprecated switch code (0xAEAE)
+            DAP_SWJ_Sequence(16, 0xE73C);
+
+            // Ensure JTAG interface is reset
+            DAP_SWJ_Sequence(6, 0x3F);
+          </block>
+
+        </control>
+
+      </control>
+
+      <block atomic="1">
+        // JTAG "Soft" Reset
+        DAP_JTAG_Sequence(6, 1, 0x3F);
+        DAP_JTAG_Sequence(1, 0, 0x01);
+      </block>
+
+    </control>
+
+    <!-- SWD Protocol -->
+    <control if="protType == 2">
+
+      <control if="isSWJ">
+
+        <control if="hasDormant">
+
+          <block atomic="1">
+            // Ensure current debug interface is in reset state
+            DAP_SWJ_Sequence(51, 0x0007FFFFFFFFFFFF);
+
+            // Select Dormant State (from JTAG)
+            DAP_SWJ_Sequence(31, 0x33BBBBBA);
+
+            // At least 8 cycles SWDIO/TMS HIGH
+            DAP_SWJ_Sequence(8, 0xFF);
+
+            // Alert Sequence Bits  0.. 63
+            DAP_SWJ_Sequence(64, 0x86852D956209F392);
+
+            // Alert Sequence Bits 64..127
+            DAP_SWJ_Sequence(64, 0x19BC0EA2E3DDAFE9);
+
+            // 4 cycles SWDIO/TMS LOW + 8-Bit SWD Activation Code (0x1A)
+            DAP_SWJ_Sequence(12, 0x1A0);
+
+            // Enter SWD Line Reset State
+            DAP_SWJ_Sequence(51, 0x0007FFFFFFFFFFFF);  // &gt; 50 cycles SWDIO/TMS High
+            DAP_SWJ_Sequence(3,  0x00);                // At least 2 idle cycles (SWDIO/TMS Low)
+          </block>
+
+        </control>
+
+        <control if="!hasDormant">
+
+          <block atomic="1">
+            // Ensure current debug interface is in reset state
+            DAP_SWJ_Sequence(51, 0x0007FFFFFFFFFFFF);
+
+            // Execute SWJ-DP Switch Sequence JTAG to SWD (0xE79E)
+            // Change if SWJ-DP uses deprecated switch code (0xEDB6)
+            DAP_SWJ_Sequence(16, 0xE79E);
+
+            // Enter SWD Line Reset State
+            DAP_SWJ_Sequence(51, 0x0007FFFFFFFFFFFF);  // &gt; 50 cycles SWDIO/TMS High
+            DAP_SWJ_Sequence(3,  0x00);                // At least 2 idle cycles (SWDIO/TMS Low)
+          </block>
+
+        </control>
+
+      </control>
+
+      <control if="!isSWJ">
+
+        <control if="hasDormant">
+
+          <block atomic="1">
+            // Ensure current debug interface is in reset state
+            DAP_SWJ_Sequence(51, 0x0007FFFFFFFFFFFF);
+
+            // At least 8 cycles SWDIO/TMS HIGH
+            DAP_SWJ_Sequence(8, 0xFF);
+
+            // Alert Sequence Bits  0.. 63
+            DAP_SWJ_Sequence(64, 0x86852D956209F392);
+
+            // Alert Sequence Bits 64..127
+            DAP_SWJ_Sequence(64, 0x19BC0EA2E3DDAFE9);
+
+            // 4 cycles SWDIO/TMS LOW + 8-Bit SWD Activation Code (0x1A)
+            DAP_SWJ_Sequence(12, 0x1A0);
+
+            // Enter SWD Line Reset State
+            DAP_SWJ_Sequence(51, 0x0007FFFFFFFFFFFF);  // &gt; 50 cycles SWDIO/TMS High
+            DAP_SWJ_Sequence(3,  0x00);                // At least 2 idle cycles (SWDIO/TMS Low)
+          </block>
+
+        </control>
+
+        <control if="!hasDormant">
+
+          <block atomic="1">
+            // Enter SWD Line Reset State
+            DAP_SWJ_Sequence(51, 0x0007FFFFFFFFFFFF);  // &gt; 50 cycles SWDIO/TMS High
+            DAP_SWJ_Sequence(3,  0x00);                // At least 2 idle cycles (SWDIO/TMS Low)
+          </block>
+
+        </control>
+
+      </control>
+
+      <block>
+        // Read DPIDR to enable SWD interface (SW-DPv1 and SW-DPv2)
+        ReadDP(0x0);
+      </block>
+
+    </control>
+
+  </sequence>
+
+  <sequence name="DebugPortStart">
+
+    <block>
+      __var SW_DP_ABORT  = 0x0;
+      __var DP_CTRL_STAT = 0x4;
+      __var DP_SELECT    = 0x8;
+      __var powered_down = 0;
+      // Switch to DP Register Bank 0
+      WriteDP(DP_SELECT, 0x00000000);
+
+      // Read DP CTRL/STAT Register and check if CSYSPWRUPACK and CDBGPWRUPACK bits are set
+      powered_down = ((ReadDP(DP_CTRL_STAT) &amp; 0xA0000000) != 0xA0000000);
+    </block>
+
+    <control if="powered_down">
+
+      <block>
+        // Request Debug/System Power-Up
+        WriteDP(DP_CTRL_STAT, 0x50000000);
+      </block>
+
+      <!-- Wait for Power-Up Request to be acknowledged -->
+      <control while="(ReadDP(DP_CTRL_STAT) &amp; 0xA0000000) != 0xA0000000" timeout="1000000"/>
+
+      <!-- JTAG Specific Part of sequence -->
+      <control if="(__protocol &amp; 0xFFFF) == 1">
+
+        <block>
+          // Init AP Transfer Mode, Transaction Counter, and Lane Mask (Normal Transfer Mode, Include all Byte Lanes)
+          // Additionally clear STICKYORUN, STICKYCMP, and STICKYERR bits by writing '1'
+          WriteDP(DP_CTRL_STAT, 0x50000F32);
+        </block>
+
+      </control>
+
+      <!-- SWD Specific Part of sequence -->
+      <control if="(__protocol &amp; 0xFFFF) == 2">
+
+        <block>
+          // Init AP Transfer Mode, Transaction Counter, and Lane Mask (Normal Transfer Mode, Include all Byte Lanes)
+          WriteDP(DP_CTRL_STAT, 0x50000F00);
+
+          // Clear WDATAERR, STICKYORUN, STICKYCMP, and STICKYERR bits of CTRL/STAT Register by write to ABORT register
+          WriteDP(SW_DP_ABORT, 0x0000001E);
+        </block>
+      </control>
+
+    </control>
+
+  </sequence>
+
+  <sequence name="DebugPortStop">
+    <block>
+      __var DP_CTRL_STAT = 0x4;
+      __var DP_SELECT    = 0x8;
+
+      // Switch to DP Register Bank 0
+      WriteDP(DP_SELECT, 0x00000000);
+
+      // Power Down Debug port
+      WriteDP(DP_CTRL_STAT, 0x00000000);
+    </block>
+  </sequence>
+
+  <sequence name="DebugCoreStart">
+    <block>
+      // System Control Space (SCS) offset as defined in Armv6-M/Armv7-M.
+
+      __var SCS_Addr   = 0xE000E000;
+      __var DHCSR_Addr = SCS_Addr + 0xDF0;
+      // Enable Core Debug via DHCSR
+      Write32(DHCSR_Addr, 0xA05F0001);
+    </block>
+
+  </sequence>
+
+  <sequence name="DebugCoreStop">
+    <block>
+      // System Control Space (SCS) offset as defined in Armv6-M/Armv7-M.
+
+      __var SCS_Addr   = 0xE000E000;
+      __var DHCSR_Addr = SCS_Addr + 0xDF0;
+      __var DEMCR_Addr = SCS_Addr + 0xDFC;
+
+      // Disable Core Debug via DHCSR
+      Write32(DHCSR_Addr, 0xA05F0000);
+
+      // Disable DWT and ITM blocks, DebugMonitor handler,
+      // halting debug traps, and Reset Vector Catch.
+      Write32(DEMCR_Addr, 0x00000000);
+    </block>
+
+  </sequence>
+
+  <sequence name="ResetSystem">
+    <block>
+      // System Control Space (SCS) offset as defined in Armv6-M/Armv7-M.
+      __var SCS_Addr   = 0xE000E000;
+      __var AIRCR_Addr = SCS_Addr + 0xD0C;
+      __var DHCSR_Addr = SCS_Addr + 0xDF0;
+
+      // Execute SYSRESETREQ via AIRCR
+      Write32(AIRCR_Addr, 0x05FA0004);
+    </block>
+    <!-- Reset Recovery: Wait for DHCSR.S_RESET_ST bit to clear on read -->
+    <control while="(Read32(DHCSR_Addr) &amp; 0x02000000)" timeout="500000"/>
+
+  </sequence>
+
+  <!-- NOTE: This predefined debug access sequence is empty for Armv6-M and Armv8-M based processors. -->
+
+  <sequence name="ResetProcessor">
+    <block>
+      // System Control Space (SCS) offset as defined in Armv7-M.
+      __var SCS_Addr   = 0xE000E000;
+      __var AIRCR_Addr = SCS_Addr + 0xD0C;
+      __var DHCSR_Addr = SCS_Addr + 0xDF0;
+
+      // Execute VECTRESET via AIRCR
+      Write32(AIRCR_Addr, 0x05FA0001);
+    </block>
+
+    <!-- Reset Recovery: Wait for DHCSR.S_RESET_ST bit to clear on read -->
+    <control while="(Read32(DHCSR_Addr) &amp; 0x02000000)" timeout="500000"/>
+  </sequence>
+
+  <sequence name="ResetHardware">
+
+    <block>
+      __var nReset      = 0x80;
+      __var canReadPins = 0;
+
+      // De-assert nRESET line
+      canReadPins = (DAP_SWJ_Pins(0x00, nReset, 0) != 0xFFFFFFFF);
+    </block>
+
+    <!-- Keep reset active for 50 ms -->
+    <control while="1" timeout="50000"/>
+    <control if="canReadPins">
+
+      <!-- Assert nRESET line and wait max. 1s for recovery -->
+      <control while="(DAP_SWJ_Pins(nReset, nReset, 0) &amp; nReset) == 0" timeout="1000000"/>
+
+    </control>
+
+    <control if="!canReadPins">
+
+      <block>
+        // Assert nRESET line
+        DAP_SWJ_Pins(nReset, nReset, 0);
+      </block>
+
+      <!-- Wait 100ms for recovery if nRESET not readable -->
+      <control while="1" timeout="100000"/>
+
+    </control>
+
+  </sequence>
+
+  <sequence name="ResetHardwareAssert">
+    <block>
+        __var nReset = 0x80;
+
+        // De-assert nRESET line to activate the hardware reset
+        DAP_SWJ_Pins(0, nReset, 0);
+    </block>
+
+  </sequence>
+
+  <sequence name="ResetHardwareDeassert">
+    <block>
+      __var nReset      = 0x80;
+      __var canReadPins = 0;
+
+      // Assert nRESET line and check if nRESET is readable
+      canReadPins = (DAP_SWJ_Pins(nReset, nReset, 0) != 0xFFFFFFFF);
+    </block>
+    <!-- Wait max. 1s for nRESET to recover from reset if readable-->
+    <control if="canReadPins" while="(DAP_SWJ_Pins(nReset, nReset, 0) &amp; nReset) == 0" timeout="1000000"/>
+
+    <!-- Wait 100ms for recovery if nRESET not readable -->
+    <control if="!canReadPins" while="1" timeout="100000"/>
+  </sequence>
+
+  <sequence name="ResetCatchSet">
+    <block>
+      // System Control Space (SCS) offset as defined
+      // in Armv6-M/Armv7-M. Reimplement this sequence
+      // if the SCS is located at a different offset.
+      __var SCS_Addr   = 0xE000E000;
+      __var DHCSR_Addr = SCS_Addr + 0xDF0;
+      __var DEMCR_Addr = SCS_Addr + 0xDFC;
+      __var value      = 0;
+
+      // Enable Reset Vector Catch in DEMCR
+      value = Read32(DEMCR_Addr);
+      Write32(DEMCR_Addr, (value | 0x00000001));
+      // Read DHCSR to clear potentially set DHCSR.S_RESET_ST bit
+      Read32(DHCSR_Addr);
+    </block>
+  </sequence>
+
+  <sequence name="ResetCatchClear">
+    <block>
+      // System Control Space (SCS) offset as defined
+      // in Armv6-M/Armv7-M. Reimplement this sequence
+      // if the SCS is located at a different offset.
+
+      __var SCS_Addr   = 0xE000E000;
+      __var DEMCR_Addr = SCS_Addr + 0xDFC;
+      __var value      = 0;
+
+      // Disable Reset Vector Catch in DEMCR
+      value = Read32(DEMCR_Addr);
+      Write32(DEMCR_Addr, (value &amp; (~0x00000001)));
+    </block>
+
+  </sequence>
+</sequences>

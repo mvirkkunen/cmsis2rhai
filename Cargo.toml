@@ -1,0 +1,15 @@
+[package]
+name = "cmsis2rhai"
+version = "0.1.0"
+authors = ["Matti Virkkunen <mvirkkunen@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+cmsis-pack = { path = "../cmsis-pack-manager/rust/cmsis-pack" }
+lazy_static = "1.4.0"
+log = "0.4.8"
+quote = "1.0.7"
+proc-macro2 = "1.0.21"
+rhai = "0.18.3"
+rustfmt = "0.10.0"
+simplelog = "0.7.6"
